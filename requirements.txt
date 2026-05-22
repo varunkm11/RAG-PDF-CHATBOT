@@ -1,5 +1,6 @@
-setuptools
+setuptools>=70.0.0
 wheel
+pip
 streamlit==1.37.1
 langchain==0.2.16
 langchain-community==0.2.16
@@ -11,8 +12,5 @@ python-dotenv
 PyMuPDF
 pypdf
 sentence-transformers
-fastapi
-uvicorn
-inngest
 torch
 transformers
