@@ -1,3 +1,4 @@
+import os
 import streamlit as st
 import tempfile
 from services.pdf_loader import load_pdf_text
