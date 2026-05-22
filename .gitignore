@@ -1,0 +1,40 @@
+# Virtual Environment
+.venv/
+venv/
+
+# Python Cache
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Environment Variables
+.env
+
+# Streamlit
+.streamlit/
+
+# IDE Files
+.idea/
+.vscode/
+
+# Uploaded Files
+uploads/
+
+# Logs
+*.log
+
+# OS Files
+.DS_Store
+Thumbs.db
+
+# Jupyter
+.ipynb_checkpoints/
+
+# Build Files
+build/
+dist/
+
+# Temporary Files
+*.tmp
+*.temp
