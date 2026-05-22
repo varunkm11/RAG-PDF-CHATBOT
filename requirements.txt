@@ -12,10 +12,9 @@ python-dotenv
 PyMuPDF
 pypdf
 
-sentence-transformers==3.0.1
-transformers==4.44.2
-torch==2.4.1
-huggingface-hub==0.24.6
+sentence-transformers
+transformers
+torch
 
-setuptools>=70.0.0
+setuptools
 wheel
