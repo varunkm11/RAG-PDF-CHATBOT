@@ -6,7 +6,7 @@ langchain-core==0.2.38
 langchain-google-genai==1.0.8
 langchain-text-splitters==0.2.4
 
-qdrant-client==1.10.1
+qdrant-client==1.7.3
 
 python-dotenv
 PyMuPDF
