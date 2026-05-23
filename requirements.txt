@@ -13,8 +13,6 @@ PyMuPDF
 pypdf
 
 sentence-transformers
-transformers
-torch
 
-setuptools
+setuptools>=70.0.0
 wheel
