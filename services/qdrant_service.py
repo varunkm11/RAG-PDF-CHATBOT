@@ -1,4 +1,3 @@
-import streamlit as st
 from qdrant_client import QdrantClient
 from langchain_community.vectorstores import Qdrant
 from services.embeddings import get_embedding_model
@@ -10,9 +9,7 @@ load_dotenv()
 COLLECTION_NAME = "pdf_chatbot"
 
 
-@st.cache_resource
 def get_qdrant_vectorstore():
-
     client = QdrantClient(
         url=os.getenv("QDRANT_URL"),
         api_key=os.getenv("QDRANT_API_KEY")

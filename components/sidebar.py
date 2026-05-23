@@ -17,13 +17,9 @@ def render_sidebar():
 
         st.markdown("---")
 
-        if st.button("➕ New Chat"):
+        st.subheader("💬 Chat")
 
-            st.session_state.messages = []
-
-            st.session_state.pdf_processed = False
-
-            st.rerun()
+        st.button("➕ New Chat")
 
         st.markdown("---")
 
