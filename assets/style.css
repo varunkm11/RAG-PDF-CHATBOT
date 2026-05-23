@@ -1,15 +1,43 @@
+body {
+    background-color: #0f172a;
+    color: white;
+}
+
 .stApp {
-    background-color: #0f1117;
-    color: white;
+    background: linear-gradient(to bottom right, #0f172a, #111827);
 }
 
-h1 {
-    color: white;
-    text-align: center;
+section[data-testid="stSidebar"] {
+    background-color: #111827;
 }
 
-[data-testid="stChatMessage"] {
-    border-radius: 15px;
+.stChatMessage {
+    border-radius: 12px;
     padding: 10px;
-    margin-bottom: 10px;
+}
+
+.stButton > button {
+    width: 100%;
+    border-radius: 10px;
+    background-color: #2563eb;
+    color: white;
+    border: none;
+    padding: 10px;
+    font-weight: bold;
+}
+
+.stButton > button:hover {
+    background-color: #1d4ed8;
+}
+
+.stTextInput > div > div > input {
+    border-radius: 10px;
+}
+
+h1, h2, h3 {
+    color: white;
+}
+
+.css-1d391kg {
+    background-color: #111827;
 }
