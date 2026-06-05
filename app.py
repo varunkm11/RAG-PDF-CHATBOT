@@ -72,6 +72,16 @@ def health():
     return jsonify({"status": "ok"}), 200
 
 
+@app.route("/debug")
+def debug():
+    return jsonify({
+        "gemini_key": bool(os.getenv("GEMINI_API_KEY")),
+        "qdrant_url": os.getenv("QDRANT_URL", "MISSING"),
+        "qdrant_key": bool(os.getenv("QDRANT_API_KEY")),
+        "rag_ready": RAG_READY,
+        "rag_error": RAG_ERROR if not RAG_READY else "none"
+    })
+
 # ── Entry point ────────────────────────────────────────────────
 
 if __name__ == "__main__":
