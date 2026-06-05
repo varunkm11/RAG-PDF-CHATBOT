@@ -1,0 +1,271 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>PDF RAG Chatbot</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}"/>
+</head>
+<body>
+
+  <div class="app" id="app">
+
+    <!-- Sidebar -->
+    <aside class="sidebar" id="sidebar">
+      <div class="sidebar-inner">
+
+        <div class="sidebar-header">
+          <span class="logo">📄 PDF Chat</span>
+          <button class="icon-btn" id="closeSidebar" title="Hide sidebar">✕</button>
+        </div>
+
+        <p class="subtitle">Upload a PDF and ask questions about it.</p>
+
+        <div class="upload-area" id="uploadArea">
+          <input type="file" id="fileInput" accept=".pdf" hidden />
+          <div class="upload-icon">⬆</div>
+          <p>Drop PDF here or <span class="link" onclick="document.getElementById('fileInput').click()">browse</span></p>
+          <p class="hint">Max 50 MB</p>
+        </div>
+
+        <div id="uploadStatus" class="status hidden"></div>
+
+        <div class="file-list-header" id="fileListHeader" style="display:none">
+          <span>Uploaded PDFs</span>
+          <button class="clear-btn" id="clearHistoryBtn" title="Clear all PDF history">🗑 Clear all</button>
+        </div>
+
+        <div id="fileList" class="file-list"></div>
+
+      </div>
+    </aside>
+
+    <!-- Main area -->
+    <div class="main" id="main">
+
+      <!-- Top bar -->
+      <header class="topbar">
+        <button class="icon-btn" id="toggleSidebar" title="Toggle sidebar">☰</button>
+        <span class="topbar-title">PDF RAG Chatbot</span>
+        <button class="theme-toggle" id="themeToggle" title="Toggle dark/light mode">
+          <span id="themeIcon">🌙</span>
+        </button>
+      </header>
+
+      <!-- Messages -->
+      <div class="messages" id="messages">
+        <div class="message bot">
+          <div class="avatar">🤖</div>
+          <div class="bubble">Hello! Upload a PDF using the panel on the left, then ask me anything about it.</div>
+        </div>
+      </div>
+
+      <!-- Input -->
+      <form class="input-row" id="chatForm">
+        <input
+          type="text"
+          id="questionInput"
+          placeholder="Ask a question about your PDF..."
+          autocomplete="off"
+        />
+        <button type="submit" id="sendBtn">Send</button>
+      </form>
+
+    </div>
+  </div>
+
+  <!-- Confirm modal -->
+  <div class="modal-overlay hidden" id="modalOverlay">
+    <div class="modal">
+      <p>Delete all uploaded PDF history from this session?</p>
+      <div class="modal-actions">
+        <button class="btn-cancel" id="modalCancel">Cancel</button>
+        <button class="btn-confirm" id="modalConfirm">Delete</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // ── Theme ────────────────────────────────────────────────
+    const html       = document.documentElement;
+    const themeToggle = document.getElementById('themeToggle');
+    const themeIcon  = document.getElementById('themeIcon');
+
+    const savedTheme = localStorage.getItem('theme') || 'light';
+    html.setAttribute('data-theme', savedTheme);
+    themeIcon.textContent = savedTheme === 'dark' ? '☀️' : '🌙';
+
+    themeToggle.addEventListener('click', () => {
+      const current = html.getAttribute('data-theme');
+      const next = current === 'dark' ? 'light' : 'dark';
+      html.setAttribute('data-theme', next);
+      localStorage.setItem('theme', next);
+      themeIcon.textContent = next === 'dark' ? '☀️' : '🌙';
+    });
+
+    // ── Sidebar toggle ───────────────────────────────────────
+    const sidebar       = document.getElementById('sidebar');
+    const app           = document.getElementById('app');
+    const toggleSidebar = document.getElementById('toggleSidebar');
+    const closeSidebar  = document.getElementById('closeSidebar');
+
+    function openSidebar()  { app.classList.remove('sidebar-hidden'); }
+    function hideSidebar()  { app.classList.add('sidebar-hidden'); }
+
+    toggleSidebar.addEventListener('click', () => {
+      app.classList.toggle('sidebar-hidden');
+    });
+    closeSidebar.addEventListener('click', hideSidebar);
+
+    // ── Upload ───────────────────────────────────────────────
+    const fileInput    = document.getElementById('fileInput');
+    const uploadArea   = document.getElementById('uploadArea');
+    const uploadStatus = document.getElementById('uploadStatus');
+    const fileList     = document.getElementById('fileList');
+    const fileListHeader = document.getElementById('fileListHeader');
+    const sendBtn      = document.getElementById('sendBtn');
+
+    uploadArea.addEventListener('dragover', e => { e.preventDefault(); uploadArea.classList.add('drag-over'); });
+    uploadArea.addEventListener('dragleave', () => uploadArea.classList.remove('drag-over'));
+    uploadArea.addEventListener('drop', e => {
+      e.preventDefault();
+      uploadArea.classList.remove('drag-over');
+      if (e.dataTransfer.files[0]) handleUpload(e.dataTransfer.files[0]);
+    });
+    fileInput.addEventListener('change', () => {
+      if (fileInput.files[0]) handleUpload(fileInput.files[0]);
+    });
+
+    async function handleUpload(file) {
+      if (!file.name.endsWith('.pdf')) {
+        showStatus('Only PDF files are supported.', 'error');
+        return;
+      }
+      showStatus('Uploading and processing… this may take a minute.', 'info');
+      sendBtn.disabled = true;
+
+      const formData = new FormData();
+      formData.append('file', file);
+
+      try {
+        const res  = await fetch('/upload', { method: 'POST', body: formData });
+        const data = await res.json();
+        if (data.success) {
+          showStatus(`✓ "${data.filename}" ingested — ${data.chunks} chunks`, 'success');
+          addFileTag(data.filename, data.chunks);
+          appendMessage('bot', `I've loaded "${data.filename}" (${data.chunks} chunks). Ask me anything about it!`);
+        } else {
+          showStatus('Error: ' + data.error, 'error');
+        }
+      } catch (err) {
+        showStatus('Upload failed: ' + err.message, 'error');
+      } finally {
+        sendBtn.disabled = false;
+        fileInput.value = '';
+      }
+    }
+
+    function showStatus(msg, type) {
+      uploadStatus.textContent = msg;
+      uploadStatus.className = 'status ' + type;
+    }
+
+    function addFileTag(name, chunks) {
+      fileListHeader.style.display = 'flex';
+      const tag = document.createElement('div');
+      tag.className = 'file-tag';
+      tag.innerHTML = `
+        <div class="file-info">
+          <span class="file-name">📄 ${escapeHtml(name)}</span>
+          <small>${chunks} chunks</small>
+        </div>
+        <button class="remove-btn" title="Remove">✕</button>
+      `;
+      tag.querySelector('.remove-btn').addEventListener('click', () => {
+        tag.remove();
+        if (fileList.children.length === 0) fileListHeader.style.display = 'none';
+      });
+      fileList.appendChild(tag);
+    }
+
+    // ── Clear history ────────────────────────────────────────
+    const clearHistoryBtn = document.getElementById('clearHistoryBtn');
+    const modalOverlay    = document.getElementById('modalOverlay');
+    const modalCancel     = document.getElementById('modalCancel');
+    const modalConfirm    = document.getElementById('modalConfirm');
+
+    clearHistoryBtn.addEventListener('click', () => {
+      modalOverlay.classList.remove('hidden');
+    });
+    modalCancel.addEventListener('click', () => {
+      modalOverlay.classList.add('hidden');
+    });
+    modalConfirm.addEventListener('click', () => {
+  // Clear file list
+  fileList.innerHTML = '';
+  fileListHeader.style.display = 'none';
+  uploadStatus.className = 'status hidden';
+
+  // Clear all chat messages
+  messages.innerHTML = '';
+
+  // Close modal
+  modalOverlay.classList.add('hidden');
+
+  // Fresh welcome message
+  appendMessage('bot', 'History cleared. Upload a new PDF to start fresh.');
+});
+
+    // ── Chat ─────────────────────────────────────────────────
+    const messages      = document.getElementById('messages');
+    const chatForm      = document.getElementById('chatForm');
+    const questionInput = document.getElementById('questionInput');
+
+    chatForm.addEventListener('submit', async e => {
+      e.preventDefault();
+      const question = questionInput.value.trim();
+      if (!question) return;
+
+      appendMessage('user', question);
+      questionInput.value = '';
+      sendBtn.disabled = true;
+
+      const thinking = appendMessage('bot', '…');
+
+      try {
+        const res  = await fetch('/chat', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ question }),
+        });
+        const data = await res.json();
+        thinking.querySelector('.bubble').textContent = data.success ? data.answer : 'Error: ' + data.error;
+      } catch (err) {
+        thinking.querySelector('.bubble').textContent = 'Request failed: ' + err.message;
+      } finally {
+        sendBtn.disabled = false;
+        questionInput.focus();
+      }
+    });
+
+    function appendMessage(role, text) {
+      const div = document.createElement('div');
+      div.className = 'message ' + role;
+      div.innerHTML = `
+        <div class="avatar">${role === 'bot' ? '🤖' : '🧑'}</div>
+        <div class="bubble">${escapeHtml(text)}</div>
+      `;
+      messages.appendChild(div);
+      messages.scrollTop = messages.scrollHeight;
+      return div;
+    }
+
+    function escapeHtml(str) {
+      return String(str)
+        .replace(/&/g,'&amp;')
+        .replace(/</g,'&lt;')
+        .replace(/>/g,'&gt;');
+    }
+  </script>
+</body>
+</html>

@@ -1,79 +1,80 @@
 import os
-import streamlit as st
 import tempfile
-from services.pdf_loader import load_pdf_text
-from services.text_splitter import split_text
-from services.embeddings import get_embedding_model
-from services.qdrant_service import get_qdrant_vectorstore
-from services.rag_pipeline import get_qa_chain
-from langchain.schema import Document
-st.set_page_config(
-    page_title="AI PDF Chatbot",
-    page_icon="🤖",
-    layout="wide"
-)
+from flask import Flask, request, jsonify, render_template
+from dotenv import load_dotenv
+from rag_engine import ingest_pdf, generate_answer, ensure_collection
 
-with open("assets/style.css") as f:
-    st.markdown(f"<style>{f.read()}</style>", unsafe_allow_html=True)
+load_dotenv()
 
-st.title("🤖 Gemini RAG PDF Chatbot")
+app = Flask(__name__)
+app.config["MAX_CONTENT_LENGTH"] = 50 * 1024 * 1024  # 50 MB limit
 
-if "messages" not in st.session_state:
-    st.session_state.messages = []
 
-uploaded_files = st.file_uploader(
-    "Upload PDFs",
-    type=["pdf"],
-    accept_multiple_files=True
-)
+# ── Routes ─────────────────────────────────────────────────────
 
-if uploaded_files:
-    with st.spinner("Processing PDFs..."):
+@app.route("/")
+def index():
+    return render_template("index.html")
 
-        all_chunks = []
 
-        for uploaded_file in uploaded_files:
-            with tempfile.NamedTemporaryFile(delete=False, suffix=".pdf") as tmp_file:
-                tmp_file.write(uploaded_file.read())
-                pdf_path = tmp_file.name
+@app.route("/upload", methods=["POST"])
+def upload_pdf():
+    """Receive a PDF, ingest it into Qdrant."""
+    if "file" not in request.files:
+        return jsonify({"success": False, "error": "No file part in request."}), 400
 
-            text = load_pdf_text(pdf_path)
-            chunks = split_text(text)
-            all_chunks.extend(chunks)
+    file = request.files["file"]
 
-        docs = [Document(page_content=chunk) for chunk in all_chunks]
+    if file.filename == "":
+        return jsonify({"success": False, "error": "No file selected."}), 400
 
-        vectorstore = get_qdrant_vectorstore()
+    if not file.filename.lower().endswith(".pdf"):
+        return jsonify({"success": False, "error": "Only PDF files are supported."}), 400
 
-        vectorstore.add_documents(docs)
+    # Save to a temp file and ingest
+    with tempfile.NamedTemporaryFile(delete=False, suffix=".pdf") as tmp:
+        file.save(tmp.name)
+        tmp_path = tmp.name
 
-        st.success("PDFs indexed successfully!")
+    try:
+        result = ingest_pdf(tmp_path, file.filename)
+    finally:
+        os.unlink(tmp_path)  # always clean up temp file
 
-for msg in st.session_state.messages:
-    with st.chat_message(msg["role"]):
-        st.markdown(msg["content"])
+    if result["success"]:
+        return jsonify(result), 200
+    else:
+        return jsonify(result), 500
 
-question = st.chat_input("Ask your PDF anything...")
 
-if question:
-    st.session_state.messages.append({
-        "role": "user",
-        "content": question
-    })
+@app.route("/chat", methods=["POST"])
+def chat():
+    """Receive a question, return an answer from the RAG pipeline."""
+    data = request.get_json()
 
-    with st.chat_message("user"):
-        st.markdown(question)
+    if not data or "question" not in data:
+        return jsonify({"success": False, "error": "Missing 'question' field."}), 400
 
-    with st.chat_message("assistant"):
-        with st.spinner("Thinking..."):
-            qa_chain = get_qa_chain()
+    question = data["question"].strip()
 
-            result = qa_chain(question)
+    if not question:
+        return jsonify({"success": False, "error": "Question cannot be empty."}), 400
 
-            answer = result["result"]
+    try:
+        answer = generate_answer(question)
+        return jsonify({"success": True, "answer": answer}), 200
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)}), 500
 
-            st.markdown(answer)
 
-            st.session_state.messages.append({
-                "role": "assistant",
-            })
+@app.route("/health")
+def health():
+    return jsonify({"status": "ok"}), 200
+
+
+# ── Entry point ────────────────────────────────────────────────
+
+if __name__ == "__main__":
+    ensure_collection()
+    port = int(os.environ.get("PORT", 5000))
+    app.run(host="0.0.0.0", port=port, debug=False)
