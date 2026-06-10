@@ -165,17 +165,6 @@ User Question → Embed with Gemini → Search Qdrant → Top 5 Chunks → Gemin
 
 ---
 
-## ⚠️ Known Limitations
-
-| Problem | Solution |
-|---------|----------|
-| Scanned / image-based PDFs not supported | PDF must contain selectable text |
-| Gemini free tier quota error (429) | Wait 24 hours or create a new API key |
-| Render free tier cold start (~30s delay) | Upgrade to a paid Render plan |
-| Chat history is session-only | Refreshing the page resets the chat |
-
----
-
 ## 🔧 Environment Variables
 
 | Variable | Description | Required |
@@ -190,7 +179,6 @@ User Question → Embed with Gemini → Search Qdrant → Top 5 Chunks → Gemin
 ## 👤 Author
 
 **Varun Kumar Singh**
-GitHub: [varunkm11](https://github.com/varunkm11)
 
 ---
 
