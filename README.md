@@ -190,7 +190,7 @@ User Question → Embed with Gemini → Search Qdrant → Top 5 Chunks → Gemin
 ## 👤 Author
 
 **Varun Kumar Singh**
-GitHub: [@YOUR_USERNAME](https://github.com/varunkm11)
+GitHub: [varunkm11](https://github.com/varunkm11)
 
 ---
 
